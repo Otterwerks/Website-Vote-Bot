@@ -17,29 +17,26 @@ from selenium.webdriver.support import expected_conditions as EC
 from getch import pause
 from tqdm import tqdm
 
+#define function
+def choose(command):
+    if command == "1":
+        return options[0]
+    elif command == "2":
+        return options[1]
+    elif command == "3":
+        return random.choice(options)
+
+#initialize variables
+choice = ""
+options = ["Grapefruit", "Eucalyptus"]
+grapefruit_votes = 0
+eucalyptus_votes = 0
+start_time = 0
+end_time = 0
+chrome_options = Options()
+chrome_options.add_argument('--log-level=3')
 
 while True:
-
-    #initialize variables
-    choice = ""
-    options = ["Grapefruit", "Eucalyptus"]
-    grapefruit_votes = 0
-    eucalyptus_votes = 0
-    start_time = 0
-    end_time = 0
-    chrome_options = Options()
-    chrome_options.add_argument('--log-level=3')
-
-
-    #define functions, should be outside loop?
-    def choose(command):
-        if command == "1":
-            return options[0]
-        elif command == "2":
-            return options[1]
-        elif command == "3":
-            return random.choice(options)
-
     #print instructions
     print("\n     Website Vote Bot\n")
     print("Enter 1 to vote for Grapefruit")
@@ -68,57 +65,57 @@ while True:
         continue
 
     #show browser option, no check needed
-    headless = input("Hide browser (y/n)? ")
+    headless = input("Show browser (y/n)? ")
 
-    if headless == "n":
-        pass
-    else:
+    if headless != "y":
         chrome_options.add_argument('headless')
 
-    #begin main loop----------------------------------
+    #begin automation----------------------------------
 
     #open browser and begin timer
-    driver = webdriver.Chrome(options=chrome_options)
     start_time = time.time()
+    driver = webdriver.Chrome(options=chrome_options)
 
     #tqdm() progress bar
     for _ in tqdm(range(int(number_of_votes))):
+
+        click_try = 0
+        
         try:
             #interpret input with choose funtion
-            choice = choose(command)#probably could do this before loop?
+            choice = choose(command) #must be in loop for random to function correctly
 
             #navigate to website and find buttons
             driver.get("https://www.eoproducts.com/")
-            
-            driver.execute_script("scrollBy(0,5000);")
-            time.sleep(1)
-            driver.execute_script("return arguments[0].scrollIntoView(true);", driver.find_element_by_id("da810ed3_1538078810"))
-            #driver.find_element_by_id("da810ed3_1538078810")
-            
-            driver.switch_to.frame(driver.find_element_by_tag_name('iframe'))
-            
-            
+            driver.execute_script("window.scrollTo(0, -5000)") #avoids spam detection in headless
+            driver.switch_to.frame(driver.find_element_by_xpath("//*[@id='da810ed3_1538078810']/iframe"))
             WebDriverWait(driver, 10).until(EC.visibility_of_element_located((By.CSS_SELECTOR, "input[value='"+choice+"']")))
-            
-            radio_button = driver.find_element_by_css_selector("input[value='"+choice+"']")
+            radio_button = driver.find_element_by_xpath("//input[@value='"+choice+"']")
             vote = driver.find_element_by_id('submitButton')
-          
 
-            #make sure button is selected
-            while radio_button.is_selected() == False:
-                radio_button.click()
+            #make sure button is selected, try one more time to switch to frame and select choice before breaking on error
+            while radio_button.is_selected() == False and click_try < 10:
                 time.sleep(1)
-
+                radio_button.click()
+                click_try += 1
+                
+                
+                    #driver.switch_to.frame(driver.find_element_by_xpath("//*[@id='da810ed3_1538078810']/iframe"))
+                    #WebDriverWait(driver, 10).until(EC.visibility_of_element_located((By.CSS_SELECTOR, "input[value='"+choice+"']")))
+                    #radio_button.click()
+                    
+                
             #time delays avoid spam detection
             time.sleep(1)
             vote.click()
             time.sleep(1)
-
+            
             #count vote (only if successful)
             if choice == "Grapefruit":
                 grapefruit_votes += 1
             elif choice == "Eucalyptus":
                 eucalyptus_votes += 1
+                
         except: #if there is an error...
             continue #try again
 
@@ -127,7 +124,7 @@ while True:
     end_time = time.time()
     break
 
-    #end main looop------------------------------------
+    #end automation------------------------------------
 
 #final report and exit
 print("\nProcess complete in " + str(round(end_time - start_time, 2)) + " seconds.")
